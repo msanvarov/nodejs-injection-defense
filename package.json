@@ -1,0 +1,13 @@
+{
+  "name": "nodejs-injection-defense",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Runnable examples of injection bugs in Node.js and how to fix them",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "test": "node --test"
+  }
+}
