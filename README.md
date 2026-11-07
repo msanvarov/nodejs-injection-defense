@@ -1,11 +1,29 @@
 # nodejs-injection-defense
 
+[![CI](https://github.com/msanvarov/nodejs-injection-defense/actions/workflows/test.yml/badge.svg)](https://github.com/msanvarov/nodejs-injection-defense/actions/workflows/test.yml) ![Node](https://img.shields.io/badge/node-%3E%3D22.13-339933?logo=node.js&logoColor=white) ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
+
 Small, runnable examples of the most common injection bugs in Node.js. Each file in `src/` has an **unsafe** version and a **safe** version, and `test/` proves the attack works on one and fails on the other.
 
 No dependencies. Uses only Node built-ins (`node:sqlite`, `node:child_process`, `node:test`).
 
 ```bash
 npm test
+```
+
+> [!WARNING]
+> Functions ending in `Unsafe` are **intentionally vulnerable** so the tests can show the attack working. Copy the safe versions, never those.
+
+## Project layout
+
+```text
+src/
+  command.js     exec() vs execFile()
+  sql.js         string concatenation vs placeholders (node:sqlite)
+  path.js        path.join vs resolve-and-check
+  prototype.js   naive deep merge vs key-filtered merge
+  regex.js       catastrophic-backtracking regex vs linear one
+test/
+  injection.test.js   one test per attack, run against both versions
 ```
 
 ## What's covered
@@ -57,3 +75,24 @@ node -e "console.time('t'); /^(\w+\s?)*$/.test('a'.repeat(28) + '!'); console.ti
 ### `eval`, `new Function`, `vm`
 - Never `eval` input. Parse JSON with `JSON.parse`.
 - `node:vm` is **not** a security boundary. Its docs say so. Code inside a `vm` context can escape to the host. For untrusted code, use a separate process with the permission model (see `nodejs-supply-chain-security`), a container, or an isolate library built for it.
+
+## Node.js security series
+
+| Repo | Covers |
+| --- | --- |
+| **nodejs-injection-defense** (you are here) | Command, SQL, path traversal, prototype pollution, ReDoS |
+| [nodejs-http-hardening](https://github.com/msanvarov/nodejs-http-hardening) | Headers, body limits, timeouts, rate limiting, CORS, safe errors |
+| [nodejs-supply-chain-security](https://github.com/msanvarov/nodejs-supply-chain-security) | npm config, CI auditing, install-script scanning, permission model |
+| [nodejs-crypto-secrets](https://github.com/msanvarov/nodejs-crypto-secrets) | Password hashing, tokens, JWTs, encryption, secrets |
+
+## Running it
+
+Requires Node.js 22.13 or newer. No `npm install` needed.
+
+```bash
+git clone https://github.com/msanvarov/nodejs-injection-defense.git
+cd nodejs-injection-defense
+npm test
+```
+
+Found a mistake or want to add an example? Issues and pull requests are welcome.
