@@ -9,6 +9,9 @@
   },
   "license": "MIT",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "demo": "node demo/server.js",
+    "demo:record": "node demo/static.mjs record",
+    "build": "node demo/static.mjs build"
   }
 }

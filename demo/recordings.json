@@ -1,0 +1,387 @@
+{
+  "command\n{\"name\":\"$(uname -a)\"}": {
+    "unsafe": {
+      "ran": "echo Hello $(uname -a)",
+      "output": "Hello Darwin demo-host 27.2.0 Darwin Kernel Version 27.2.0: Wed Oct 14 23:47:58 PDT 2026; root:xnu-13432.41.4~25/RELEASE_ARM64_T6050 arm64\n",
+      "exploited": true
+    },
+    "safe": {
+      "ran": "execFile('echo', [\"Hello\",\"$(uname -a)\"])",
+      "output": "Hello $(uname -a)\n",
+      "exploited": false
+    }
+  },
+  "command\n{\"name\":\"`id`\"}": {
+    "unsafe": {
+      "ran": "echo Hello `id`",
+      "output": "Hello uid=501(user) gid=20(staff) groups=20(staff),12(everyone),61(localaccounts),79(_appserverusr),80(admin),81(_appserveradm),33(_appstore),98(_lpadmin),100(_lpoperator),204(_developer),250(_analyticsusers),395(com.apple.access_ftp),398(com.apple.access_screensharing),399(com.apple.access_ssh),400(com.apple.access_remote_ae),701(com.apple.sharepoint.group.1)\n",
+      "exploited": true
+    },
+    "safe": {
+      "ran": "execFile('echo', [\"Hello\",\"`id`\"])",
+      "output": "Hello `id`\n",
+      "exploited": false
+    }
+  },
+  "command\n{\"name\":\"alice\"}": {
+    "unsafe": {
+      "ran": "echo Hello alice",
+      "output": "Hello alice\n",
+      "exploited": false
+    },
+    "safe": {
+      "ran": "execFile('echo', [\"Hello\",\"alice\"])",
+      "output": "Hello alice\n",
+      "exploited": false
+    }
+  },
+  "command\n{\"name\":\"x && whoami\"}": {
+    "unsafe": {
+      "ran": "echo Hello x && whoami",
+      "output": "Hello x\nuser\n",
+      "exploited": true
+    },
+    "safe": {
+      "ran": "execFile('echo', [\"Hello\",\"x && whoami\"])",
+      "output": "Hello x && whoami\n",
+      "exploited": false
+    }
+  },
+  "command\n{\"name\":\"x; echo PWNED\"}": {
+    "unsafe": {
+      "ran": "echo Hello x; echo PWNED",
+      "output": "Hello x\nPWNED\n",
+      "exploited": true
+    },
+    "safe": {
+      "ran": "execFile('echo', [\"Hello\",\"x; echo PWNED\"])",
+      "output": "Hello x; echo PWNED\n",
+      "exploited": false
+    }
+  },
+  "path\n{\"name\":\"../../../../../../../../etc/hosts\"}": {
+    "unsafe": {
+      "ran": "/etc/hosts",
+      "output": "##\n# Host Database\n#\n# localhost is used to configure the loopback interface\n# when the system is booting.  Do not change this entry.\n##\n127.0.0.1\tlocalhost\n255.255.255.255\tbroadcasthost\n::1             localhost\n",
+      "exploited": true
+    },
+    "safe": {
+      "ran": "/etc/hosts",
+      "error": "path escapes base directory",
+      "exploited": false
+    }
+  },
+  "path\n{\"name\":\"../secret.txt\"}": {
+    "unsafe": {
+      "ran": "/sandbox/secret.txt",
+      "output": "API_KEY=sk_live_demo_not_real\n",
+      "exploited": true
+    },
+    "safe": {
+      "ran": "/sandbox/secret.txt",
+      "error": "path escapes base directory",
+      "exploited": false
+    }
+  },
+  "path\n{\"name\":\"../uploads-evil/x\"}": {
+    "unsafe": {
+      "ran": "/sandbox/uploads-evil/x",
+      "error": "ENOENT: no such file or directory, stat '/tmp/injection-demo-mx8IpU/uploads-evil/x'",
+      "exploited": true
+    },
+    "safe": {
+      "ran": "/sandbox/uploads-evil/x",
+      "error": "path escapes base directory",
+      "exploited": false
+    }
+  },
+  "path\n{\"name\":\"welcome.txt\"}": {
+    "unsafe": {
+      "ran": "/sandbox/uploads/welcome.txt",
+      "output": "Welcome! This file is meant to be public.\n",
+      "exploited": false
+    },
+    "safe": {
+      "ran": "/sandbox/uploads/welcome.txt",
+      "output": "Welcome! This file is meant to be public.\n",
+      "exploited": false
+    }
+  },
+  "prototype\n{\"json\":\"{\\\"__proto__\\\": {\\\"isAdmin\\\": true}}\"}": {
+    "unsafe": {
+      "ran": "mergeUnsafe({}, JSON.parse(body))",
+      "output": {
+        "merged": {},
+        "polluted": {
+          "isAdmin": true
+        }
+      },
+      "exploited": true
+    },
+    "safe": {
+      "ran": "mergeSafe({}, JSON.parse(body))",
+      "output": {
+        "merged": {},
+        "polluted": {}
+      },
+      "exploited": false
+    }
+  },
+  "prototype\n{\"json\":\"{\\\"constructor\\\": {\\\"prototype\\\": {\\\"isAdmin\\\": true}}}\"}": {
+    "unsafe": {
+      "ran": "mergeUnsafe({}, JSON.parse(body))",
+      "output": {
+        "merged": {},
+        "polluted": {
+          "isAdmin": true
+        }
+      },
+      "exploited": true
+    },
+    "safe": {
+      "ran": "mergeSafe({}, JSON.parse(body))",
+      "output": {
+        "merged": {},
+        "polluted": {}
+      },
+      "exploited": false
+    }
+  },
+  "prototype\n{\"json\":\"{\\\"profile\\\": {\\\"theme\\\": \\\"dark\\\"}}\"}": {
+    "unsafe": {
+      "ran": "mergeUnsafe({}, JSON.parse(body))",
+      "output": {
+        "merged": {
+          "profile": {
+            "theme": "dark"
+          }
+        },
+        "polluted": {}
+      },
+      "exploited": false
+    },
+    "safe": {
+      "ran": "mergeSafe({}, JSON.parse(body))",
+      "output": {
+        "merged": {
+          "profile": {
+            "theme": "dark"
+          }
+        },
+        "polluted": {}
+      },
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":10}": {
+    "input": "aaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "output": false,
+      "ms": 0.04087499999877764,
+      "exploited": false
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.003040999999939231,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":14}": {
+    "input": "aaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "output": false,
+      "ms": 0.3610000000007858,
+      "exploited": false
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.006250000002182787,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":16}": {
+    "input": "aaaaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "output": false,
+      "ms": 1.3981669999993755,
+      "exploited": false
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.03891699999985576,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":19}": {
+    "input": "aaaaaaaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "output": false,
+      "ms": 10.963458000001992,
+      "exploited": false
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.005791000003227964,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":22}": {
+    "input": "aaaaaaaaaaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "output": false,
+      "ms": 84.90391700000146,
+      "exploited": false
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.004875000000538421,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":23}": {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "output": false,
+      "ms": 170.64949999999953,
+      "exploited": false
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.005625000001600711,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":26}": {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "output": false,
+      "ms": 1364.6223750000008,
+      "exploited": true
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.007082999998601736,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":28}": {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "killed": true,
+      "ms": 4000,
+      "exploited": true
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.0020000000004074536,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":30}": {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "killed": true,
+      "ms": 4000,
+      "exploited": true
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.009582999999111053,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":32}": {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "killed": true,
+      "ms": 4000,
+      "exploited": true
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.01470799999879091,
+      "exploited": false
+    }
+  },
+  "redos\n{\"n\":5}": {
+    "input": "aaaaa!",
+    "unsafe": {
+      "ran": "(s) => /^(\\w+\\s?)*$/.test(s)",
+      "output": false,
+      "ms": 0.027791999998953543,
+      "exploited": false
+    },
+    "safe": {
+      "ran": "(s) => s.length <= MAX_LEN && /^(\\w+(\\s\\w+)*)?$/.test(s)",
+      "output": false,
+      "ms": 0.003333000000566244,
+      "exploited": false
+    }
+  },
+  "sql\n{\"name\":\"' OR '1'='1\"}": {
+    "unsafe": {
+      "ran": "SELECT name FROM users WHERE name = '' OR '1'='1'",
+      "output": [
+        "alice",
+        "bob"
+      ],
+      "exploited": true
+    },
+    "safe": {
+      "ran": "SELECT name FROM users WHERE name = ?\nparams: [\"' OR '1'='1\"]",
+      "output": [],
+      "exploited": false
+    }
+  },
+  "sql\n{\"name\":\"' UNION SELECT name || ':' || is_admin FROM users --\"}": {
+    "unsafe": {
+      "ran": "SELECT name FROM users WHERE name = '' UNION SELECT name || ':' || is_admin FROM users --'",
+      "output": [
+        "alice:1",
+        "bob:0"
+      ],
+      "exploited": true
+    },
+    "safe": {
+      "ran": "SELECT name FROM users WHERE name = ?\nparams: [\"' UNION SELECT name || ':' || is_admin FROM users --\"]",
+      "output": [],
+      "exploited": false
+    }
+  },
+  "sql\n{\"name\":\"bob\"}": {
+    "unsafe": {
+      "ran": "SELECT name FROM users WHERE name = 'bob'",
+      "output": [
+        "bob"
+      ],
+      "exploited": false
+    },
+    "safe": {
+      "ran": "SELECT name FROM users WHERE name = ?\nparams: [\"bob\"]",
+      "output": [
+        "bob"
+      ],
+      "exploited": false
+    }
+  }
+}

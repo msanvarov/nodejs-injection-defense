@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Injection Defense Demo</title>
+<script>
+  // Before first paint: ?theme=dark|light overrides the system theme.
+  const theme = new URLSearchParams(location.search).get('theme');
+  if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme;
+</script>
+<style>
+  :root {
+    --bg: #f7f7f8; --panel: #ffffff; --text: #16181d; --muted: #5c6370; --border: #e3e5e8; --code: #f1f2f4;
+    --bad: #d93036; --bad-bg: #fdecec; --good: #1f8a50; --good-bg: #e8f6ee; --accent: #3b6fe0;
+    --warn: #8a5a00; --warn-bg: #fff4d6;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0f12; --panel: #16191e; --text: #e8eaed; --muted: #9aa1ad; --border: #2a2f37; --code: #0f1216;
+      --bad: #ff6369; --bad-bg: #3a1517; --good: #4cc38a; --good-bg: #10291d; --accent: #6e9bff;
+      --warn: #f2c46d; --warn-bg: #2e2410;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d0f12; --panel: #16191e; --text: #e8eaed; --muted: #9aa1ad; --border: #2a2f37; --code: #0f1216;
+    --bad: #ff6369; --bad-bg: #3a1517; --good: #4cc38a; --good-bg: #10291d; --accent: #6e9bff;
+    --warn: #f2c46d; --warn-bg: #2e2410;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  code, pre, input, textarea, .chip, .metric { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  @media (max-width: 600px) { .wrap { padding: 0 16px; } }
+
+  header { padding: 28px 0 4px; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .lede { margin: 0 0 10px; color: var(--muted); }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0; font-size: 14px; }
+  .notice { background: var(--warn-bg); color: var(--warn); border-radius: 999px; padding: 3px 11px; font-size: 13px; font-weight: 600; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 4px; }
+  .tabs a {
+    text-decoration: none; color: var(--text); background: var(--panel); border: 1px solid var(--border);
+    border-radius: 999px; padding: 5px 13px; font-size: 14px;
+  }
+  .tabs a:hover { border-color: var(--accent); }
+  main { padding: 16px 0 40px; }
+  body.only header { padding-bottom: 0; }
+  body.only main { padding-bottom: 4px; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 0 0 20px; scroll-margin-top: 16px; }
+  .card h2 { font-size: 19px; margin: 0 0 4px; }
+  .explain { color: var(--muted); margin: 0 0 14px; max-width: 80ch; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 6px; }
+  .row { display: flex; gap: 8px; align-items: stretch; }
+  input[type="text"], textarea {
+    flex: 1; min-width: 0; font-size: 14px; line-height: 1.4; color: var(--text); background: var(--code);
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px;
+  }
+  textarea { resize: vertical; min-height: 44px; }
+  input[readonly] { color: var(--muted); }
+  input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
+  .range-value { font-weight: 700; min-width: 3ch; text-align: right; align-self: center; }
+  .stack { display: grid; gap: 8px; flex: 1; min-width: 0; }
+  button.run {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 9px 18px;
+    font: 600 14px system-ui, sans-serif; cursor: pointer; white-space: nowrap; align-self: flex-start; min-height: 40px;
+  }
+  button.run:disabled { opacity: 0.6; cursor: progress; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 16px; }
+  .chips span { font-size: 12px; color: var(--muted); align-self: center; margin-right: 2px; }
+  .chip {
+    font-size: 12.5px; color: var(--text); background: transparent; border: 1px solid var(--border);
+    border-radius: 999px; padding: 3px 10px; cursor: pointer; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--accent); }
+
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .panes { grid-template-columns: 1fr; } }
+  .pane { border: 1px solid var(--border); border-top: 3px solid var(--bad); border-radius: 10px; padding: 12px 14px 14px; min-width: 0; }
+  .pane.safe { border-top-color: var(--good); }
+  .pane-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .pane h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--bad); }
+  .pane.safe h3 { color: var(--good); }
+  .badge { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
+  .badge.bad, .callout.bad { background: var(--bad-bg); color: var(--bad); }
+  .badge.good, .callout.good { background: var(--good-bg); color: var(--good); }
+  .label { font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+  .placeholder { color: var(--muted); margin: 12px 0 0; font-size: 14px; }
+  pre {
+    margin: 0; background: var(--code); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; line-height: 1.45;
+    white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto;
+  }
+  pre.err { color: var(--muted); }
+  .callout { white-space: pre-line; margin: 0; padding: 8px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  th { color: var(--muted); font-weight: 600; font-family: system-ui, sans-serif; }
+  .metric { font-size: 28px; font-weight: 700; line-height: 1.1; }
+  .pane .metric { color: var(--bad); }
+  .pane.safe .metric { color: var(--good); }
+  .bar { height: 8px; background: var(--code); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; min-width: 2px; background: currentColor; border-radius: 4px; }
+  .pane .bar { color: var(--bad); }
+  .pane.safe .bar { color: var(--good); }
+  .fix { margin: 14px 0 0; font-size: 14px; }
+  .note { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <h1>nodejs-injection-defense</h1>
+  <p class="lede">Pick or type an attack, then run it against the unsafe and the safe version of the same function.</p>
+  <p class="meta">
+    <a href="https://github.com/msanvarov/nodejs-injection-defense">github.com/msanvarov/nodejs-injection-defense</a>
+    <span class="notice">Runs deliberately vulnerable code locally · bound to 127.0.0.1</span>
+  </p>
+  <nav class="tabs" aria-label="Flaws"></nav>
+</header>
+<main class="wrap" id="cards"></main>
+
+<script>
+  const SANDBOX_NOTE = 'uploads/ holds welcome.txt and report.txt. A secret.txt sits next to it, outside.';
+
+  // One entry per flaw. render() turns a successful result into labeled blocks.
+  const PANELS = [
+    {
+      id: 'command',
+      title: 'Command injection',
+      explain: 'The unsafe version builds a shell string with exec(), so ; && $( ) and backticks in your input run as extra commands. The safe version uses execFile(), which passes your input to echo as one plain argument.',
+      field: { key: 'name', label: 'Name to greet', value: 'x; echo PWNED' },
+      presets: ['x; echo PWNED', 'x && whoami', '$(uname -a)', '`id`', 'alice'],
+      ranLabel: ['Shell command', 'execFile call'],
+      render: (d) => [['Output', pre(d.output)]],
+      fix: 'use execFile() or spawn() with an argument array, and never pass { shell: true }.',
+    },
+    {
+      id: 'sql',
+      title: 'SQL injection',
+      explain: 'The unsafe version pastes your input into the SQL text, so a quote can end the string and rewrite the query. The safe version sends the value separately with a ? placeholder. The table holds alice (admin) and bob.',
+      field: { key: 'name', label: 'Username to look up', value: "' OR '1'='1" },
+      presets: ["' OR '1'='1", "' UNION SELECT name || ':' || is_admin FROM users --", 'bob'],
+      ranLabel: ['SQL sent to the database', 'SQL + parameters'],
+      render: (d) => [['Rows returned', rowsTable(d.output)]],
+      fix: 'use parameterized queries (? placeholders). Never build SQL by concatenating strings.',
+    },
+    {
+      id: 'path',
+      title: 'Path traversal',
+      explain: 'Both versions read a file from an uploads folder. The unsafe one uses path.join, so ../ walks right out of the folder. The safe one resolves the final path and refuses anything outside uploads/. ' + SANDBOX_NOTE,
+      field: { key: 'name', label: 'File to read from uploads/', value: '../secret.txt' },
+      presets: ['../secret.txt', 'welcome.txt', '../../../../../../../../etc/hosts', '../uploads-evil/x'],
+      ranLabel: ['Resolved path', 'Resolved path'],
+      render: (d) => [['File contents', pre(d.output)]],
+      fix: 'path.resolve() the final path and check it starts with the base folder plus a path separator.',
+    },
+    {
+      id: 'prototype',
+      title: 'Prototype pollution',
+      explain: 'A deep merge copies request JSON into an object. The unsafe one follows the special __proto__ key and writes onto Object.prototype, which every object in the process inherits from. Each run uses a fresh worker thread, so this demo server stays clean.',
+      field: { key: 'json', label: 'JSON request body', value: '{"__proto__": {"isAdmin": true}}', multiline: true },
+      presets: ['{"__proto__": {"isAdmin": true}}', '{"constructor": {"prototype": {"isAdmin": true}}}', '{"profile": {"theme": "dark"}}'],
+      ranLabel: ['Call', 'Call'],
+      render: (d) => {
+        const polluted = Object.entries(d.output.polluted);
+        const effect = polluted.length
+          ? el('p', { class: 'callout bad' }, polluted.map(([k, v]) => `A brand-new empty object now has ${k}: ${JSON.stringify(v)}`).join('\n'))
+          : el('p', { class: 'callout good' }, 'A brand-new empty object is still empty: {}');
+        return [['Merged result', pre(JSON.stringify(d.output.merged))], ['Object.prototype afterwards', effect]];
+      },
+      fix: 'skip __proto__, constructor and prototype keys, copy only own keys, and validate input with a schema.',
+    },
+    {
+      id: 'redos',
+      title: 'Regex denial of service (ReDoS)',
+      explain: 'Both regexes check for a list of words. The unsafe one has nested quantifiers, so for a long word followed by "!" it tries every way to split the letters. Each +1 to n doubles its time, and Node can serve nobody else meanwhile. Runs over 4 s are killed.',
+      field: { key: 'n', label: 'Word length n', value: 26, range: [5, 32] },
+      presets: [16, 22, 26, 30],
+      presetLabel: (n) => `n = ${n}`,
+      ranLabel: ['Function', 'Function'],
+      render: (d, side, data) => {
+        const max = Math.max(data.unsafe.ms ?? 0, data.safe.ms ?? 0) || 1;
+        const time = d.killed ? '> 4,000 ms' : `${formatMs(d.ms)} ms`;
+        return [
+          ['Time to reject the input', el('div', {}, el('div', { class: 'metric' }, time),
+            el('div', { class: 'bar' }, el('span', { style: `width:${Math.max(0.5, (d.ms / max) * 100)}%` })))],
+          ['Result', d.killed ? el('p', { class: 'callout bad' }, 'Killed after 4 s, still backtracking') : pre(String(d.output))],
+        ];
+      },
+      fix: 'avoid nested quantifiers like (a+)+, cap input length, and check patterns with a ReDoS linter.',
+    },
+  ];
+
+  function el(tag, props = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') node.className = v;
+      else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+      else if (v !== false && v != null) node.setAttribute(k, v === true ? '' : v);
+    }
+    // textContent only: results contain attacker-controlled text.
+    for (const c of children.flat(Infinity)) if (c != null) node.append(c instanceof Node ? c : String(c));
+    return node;
+  }
+  const pre = (text, cls) => el('pre', cls ? { class: cls } : {}, text === '' ? '(empty)' : text);
+  const formatMs = (ms) => (ms < 1 ? ms.toFixed(3) : ms < 100 ? ms.toFixed(1) : Math.round(ms).toLocaleString('en-US'));
+
+  function rowsTable(rows) {
+    if (!rows.length) return el('p', { class: 'placeholder' }, '0 rows');
+    return el('table', {}, el('thead', {}, el('tr', {}, el('th', {}, 'name'))),
+      el('tbody', {}, rows.map((r) => el('tr', {}, el('td', {}, r)))));
+  }
+
+  function buildCard(p) {
+    const id = `${p.id}-input`;
+    let input, extra;
+    if (p.field.range) {
+      const [min, max] = p.field.range;
+      const value = el('output', { class: 'range-value', for: id }, p.field.value);
+      const preview = el('input', { type: 'text', readonly: true, 'aria-label': 'Input string', value: '' });
+      input = el('input', { type: 'range', id, min, max, value: p.field.value });
+      const sync = () => { value.value = input.value; preview.value = 'a'.repeat(+input.value) + '!'; };
+      input.addEventListener('input', sync);
+      input.sync = sync;
+      extra = el('div', { class: 'stack' }, el('div', { class: 'row' }, input, value), preview);
+      sync();
+    } else if (p.field.multiline) {
+      input = el('textarea', { id, rows: 2, spellcheck: 'false' });
+      input.value = p.field.value;
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); form.requestSubmit(); }
+      });
+    } else {
+      input = el('input', { type: 'text', id, value: p.field.value, spellcheck: 'false', autocomplete: 'off' });
+    }
+
+    const button = el('button', { class: 'run', type: 'submit' }, 'Run');
+    const form = el('form', { class: 'field' },
+      el('label', { for: id }, p.field.label),
+      el('div', { class: 'row' }, extra ?? input, button));
+    form.addEventListener('submit', (e) => { e.preventDefault(); run(p); });
+
+    const setInput = (v) => {
+      input.value = v;
+      input.sync?.();
+      input.focus();
+    };
+    const chips = el('div', { class: 'chips' }, el('span', {}, 'Try:'),
+      p.presets.map((v) => el('button', { type: 'button', class: 'chip', title: String(v), onclick: () => setInput(v) }, p.presetLabel ? p.presetLabel(v) : v)));
+
+    const panes = el('div', { class: 'panes', 'aria-live': 'polite' },
+      ['unsafe', 'safe'].map((side) => el('div', { class: `pane ${side}` },
+        el('div', { class: 'pane-head' }, el('h3', {}, side === 'unsafe' ? 'Unsafe' : 'Safe')),
+        el('p', { class: 'placeholder' }, 'Press Run to try it.'))));
+
+    p.input = input;
+    p.button = button;
+    p.panes = panes;
+    return el('section', { class: 'card', id: p.id, 'aria-labelledby': `${p.id}-title` },
+      el('h2', { id: `${p.id}-title` }, p.title),
+      el('p', { class: 'explain' }, p.explain),
+      form, chips, panes,
+      el('p', { class: 'fix' }, el('strong', {}, 'Fix: '), p.fix));
+  }
+
+  function renderPane(p, side, data) {
+    const d = data[side];
+    const other = data[side === 'unsafe' ? 'safe' : 'unsafe'];
+    const head = el('div', { class: 'pane-head' }, el('h3', {}, side === 'unsafe' ? 'Unsafe' : 'Safe'));
+    if (typeof d.exploited === 'boolean') {
+      const [text, tone] = d.exploited ? ['Exploited', 'bad'] : other.exploited ? ['Blocked', 'good'] : ['Not affected', 'good'];
+      head.append(el('span', { class: `badge ${tone}` }, text));
+    }
+    const blocks = [];
+    if (d.ran != null) blocks.push([p.ranLabel[side === 'unsafe' ? 0 : 1], pre(d.ran)]);
+    if (d.error) blocks.push(['Error', pre(d.error, 'err')]);
+    else blocks.push(...p.render(d, side, data));
+    return el('div', { class: `pane ${side}` }, head, blocks.map(([label, node]) => [el('div', { class: 'label' }, label), node]));
+  }
+
+  async function run(p) {
+    p.button.disabled = true;
+    p.button.textContent = 'Running…';
+    p.panes.setAttribute('aria-busy', 'true');
+    let data;
+    try {
+      const value = p.field.range ? Number(p.input.value) : p.input.value;
+      const res = await fetch(`/api/${p.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [p.field.key]: value }),
+      });
+      data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
+    } catch (err) {
+      data = { unsafe: { error: err.message }, safe: { error: err.message } };
+    }
+    p.panes.replaceChildren(renderPane(p, 'unsafe', data), renderPane(p, 'safe', data));
+    p.panes.removeAttribute('aria-busy');
+    p.button.disabled = false;
+    p.button.textContent = 'Run';
+  }
+
+  const params = new URLSearchParams(location.search);
+  const only = params.get('only');
+  const visible = PANELS.filter((p) => !only || p.id === only);
+  if (only) document.body.classList.add('only');
+  else document.querySelector('.tabs').append(...PANELS.map((p) => el('a', { href: `#${p.id}` }, p.title)));
+  document.getElementById('cards').append(...visible.map(buildCard));
+
+  if (params.get('autorun') === '1') {
+    (async () => { for (const p of visible) await run(p); })();
+  }
+</script>
+</body>
+</html>

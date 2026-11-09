@@ -1,6 +1,6 @@
 # nodejs-injection-defense
 
-[![CI](https://github.com/msanvarov/nodejs-injection-defense/actions/workflows/test.yml/badge.svg)](https://github.com/msanvarov/nodejs-injection-defense/actions/workflows/test.yml) ![Node](https://img.shields.io/badge/node-%3E%3D22.13-339933?logo=node.js&logoColor=white) ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+[![CI](https://github.com/msanvarov/nodejs-injection-defense/actions/workflows/test.yml/badge.svg)](https://github.com/msanvarov/nodejs-injection-defense/actions/workflows/test.yml) ![Node](https://img.shields.io/badge/node-%3E%3D22.13-339933?logo=node.js&logoColor=white) ![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen) ![License: MIT](https://img.shields.io/badge/license-MIT-blue) [![Live demo](https://img.shields.io/badge/live%20demo-netlify-00C7B7?logo=netlify&logoColor=white)](https://nodejs-injection-defense.netlify.app)
 
 Small, runnable examples of the most common injection bugs in Node.js. Each file in `src/` has an **unsafe** version and a **safe** version, and `test/` proves the attack works on one and fails on the other.
 
@@ -9,6 +9,50 @@ No dependencies. Uses only Node built-ins (`node:sqlite`, `node:child_process`, 
 ```bash
 npm test
 ```
+
+## Interactive demo
+
+**Live preview: [nodejs-injection-defense.netlify.app](https://nodejs-injection-defense.netlify.app)**. It replays recorded runs, so nothing executes on that server. Run it locally to try your own payloads.
+
+A local web page that runs each attack against the unsafe and safe version of the same function, side by side.
+
+```bash
+npm run demo     # http://127.0.0.1:4101
+```
+
+It only listens on `127.0.0.1` and rejects requests from other sites, because it really executes the vulnerable code. Stop it with Ctrl+C when you're done.
+
+The hosted preview is a static build of `demo/recordings.json` (`npm run build`). Refresh the recordings with `npm run demo:record` (needs Google Chrome).
+
+### Command injection
+
+`exec()` runs the extra `echo PWNED` hidden in the name. `execFile()` prints the input as plain text.
+
+![Command injection demo: the unsafe exec() call prints PWNED on its own line, the safe execFile() call echoes the input literally](docs/command.png)
+
+### SQL injection
+
+A quote in the username rewrites the concatenated query and returns every user. The placeholder version returns nothing.
+
+![SQL injection demo: the concatenated query returns alice and bob, the parameterized query returns 0 rows](docs/sql.png)
+
+### Path traversal
+
+`../secret.txt` walks out of the uploads folder with `path.join`. The resolve-and-check version refuses it.
+
+![Path traversal demo: the unsafe read returns the API key from secret.txt, the safe read fails with "path escapes base directory"](docs/path.png)
+
+### Prototype pollution
+
+The naive merge writes `isAdmin` onto `Object.prototype`, so every new object inherits it. Each merge runs in its own worker thread, so the demo server is never polluted.
+
+![Prototype pollution demo: after the unsafe merge a brand-new empty object has isAdmin true, after the safe merge it is still empty](docs/prototype.png)
+
+### ReDoS
+
+A slider sets the word length. The nested-quantifier regex takes over a second at n = 26 and doubles with every extra letter. The safe regex stays well under a millisecond.
+
+![ReDoS demo: the unsafe regex takes about 1,500 ms to reject 26 a's and an exclamation mark, the safe regex takes under 0.1 ms](docs/redos.png)
 
 > [!WARNING]
 > Functions ending in `Unsafe` are **intentionally vulnerable** so the tests can show the attack working. Copy the safe versions, never those.
@@ -24,6 +68,11 @@ src/
   regex.js       catastrophic-backtracking regex vs linear one
 test/
   injection.test.js   one test per attack, run against both versions
+  demo.test.js        demo API and its local-only guards
+demo/
+  server.js      local demo server (127.0.0.1 only) calling the src/ functions
+  index.html     the demo page, no build step or dependencies
+docs/            screenshots used in this README
 ```
 
 ## What's covered
